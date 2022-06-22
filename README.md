@@ -14,8 +14,9 @@ Documentation: https://pkg.go.dev/github.com/nickname76/instorage
 package main
 
 import (
-	"instorage"
 	"log"
+
+	"github.com/nickname76/instorage"
 )
 
 type DataBValue struct {

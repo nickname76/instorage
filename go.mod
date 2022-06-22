@@ -1,4 +1,4 @@
-module instorage
+module github.com/nickname76/instorage
 
 go 1.18
 
