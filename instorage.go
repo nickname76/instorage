@@ -9,16 +9,19 @@ import (
 	"github.com/nickname76/repeater"
 )
 
+// Transaction session used by NamespaceSingle and NamespaceMultiple
 type Txn struct {
 	badgertxn *badger.Txn
 }
 
+// Database api object
 type DB[TxnAPIT any] struct {
 	badgerdb       *badger.DB
 	stopGCRepeater func()
 	txnAPIBuilder  func(txn Txn) TxnAPIT
 }
 
+// Opens database from dbpath and stores txnAPIBuilder for building TxnAPI in View and Update methods of DB
 func Open[TxnAPIT any](dbpath string, txnAPIBuilder func(txn Txn) TxnAPIT) (*DB[TxnAPIT], error) {
 	if txnAPIBuilder == nil {
 		panic("txnAPIBuilder must not be nil")
