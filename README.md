@@ -1,10 +1,12 @@
 # Instorage
 
-Simple, easy to use database for faster development of small projects and MVPs in Go. Uses [Badger](https://github.com/dgraph-io/badger) as a storage.
+Simple, easy to use database for faster development of small projects and MVPs in Go. Uses [Badger](https://github.com/dgraph-io/badger) as a storage and [Gob](https://pkg.go.dev/encoding/gob) as a serializer.
 
 This database uses key-value architecture with namespaces.
 
 This library lets you describe simple database API just for your project using your own types for keys and values (see exapmple below). Database is portable, and suits best for SSDs.
+
+Also, check out about writing your own functions for decodeing/encoding Gob values [here](https://pkg.go.dev/encoding/gob).
 
 Documentation: https://pkg.go.dev/github.com/nickname76/instorage
 
@@ -107,6 +109,12 @@ func main() {
 
 		return nil
 	})
+	if err != nil {
+		log.Fatalf("Error: %v", err)
+	}
+
+	// VERY IMPORTANT, CALL IT BEFORE EXITING
+	err = db.Close()
 	if err != nil {
 		log.Fatalf("Error: %v", err)
 	}
