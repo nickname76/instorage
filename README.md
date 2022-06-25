@@ -10,6 +10,8 @@ Also, check out about writing your own functions for decodeing/encoding Gob valu
 
 Documentation: https://pkg.go.dev/github.com/nickname76/instorage
 
+*Please, **star** this repository, if you found this library useful.*
+
 ## Example usage
 
 ```Go
