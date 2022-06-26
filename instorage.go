@@ -9,11 +9,6 @@ import (
 	"github.com/nickname76/repeater"
 )
 
-// Transaction session used by NamespaceSingle and NamespaceMultiple
-type Txn struct {
-	badgertxn *badger.Txn
-}
-
 // Database api object
 type DB[TxnAPIT any] struct {
 	badgerdb       *badger.DB

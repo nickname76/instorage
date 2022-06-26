@@ -1,88 +1,12 @@
 package instorage
 
 import (
-	"bytes"
-	"encoding/gob"
 	"errors"
 	"fmt"
 	"strings"
 
 	"github.com/dgraph-io/badger/v3"
 )
-
-// Basic key-value pair for database
-type NamespaceSingle[ValueT any] struct {
-	txn  Txn
-	name string
-}
-
-// Creates api for storing single key-value pair with specified name.
-// Do not use pointer as a type for ValueT.
-// Name must not be empty.
-func NewNamespaceSingle[ValueT any](txn Txn, name string) *NamespaceSingle[ValueT] {
-	if name == "" {
-		panic("name must not be empty")
-	}
-	if strings.ContainsRune(name, '\x00') {
-		panic("name must not contain \\x00 symbol")
-	}
-	return &NamespaceSingle[ValueT]{
-		txn:  txn,
-		name: name,
-	}
-}
-
-// Sets new value
-func (nss *NamespaceSingle[ValueT]) Set(value ValueT) error {
-	valueb, err := encodeGob(value)
-	if err != nil {
-		return fmt.Errorf("Set `%v`: %w", nss.name, err)
-	}
-	err = nss.txn.badgertxn.Set([]byte(nss.name), valueb)
-	if err != nil {
-		return fmt.Errorf("Set `%v`: %w", nss.name, err)
-	}
-
-	return nil
-}
-
-// Returns saved value. If no value stored at the moment, returns default value for specified type in NewNamespaceSingle
-func (nss *NamespaceSingle[ValueT]) Get() (value ValueT, err error) {
-	item, err := nss.txn.badgertxn.Get([]byte(nss.name))
-	if err != nil {
-		if errors.Is(err, badger.ErrKeyNotFound) {
-			return value, nil
-		}
-
-		return value, fmt.Errorf("Get `%v`: %w", nss.name, err)
-	}
-
-	var valuePtr *ValueT
-	err = item.Value(func(valueb []byte) error {
-		var err error
-		valuePtr, err = decodeGob[ValueT](valueb)
-		return err
-	})
-	if err != nil {
-		return value, fmt.Errorf("Get `%v`: %w", nss.name, err)
-	}
-
-	return *valuePtr, nil
-}
-
-// Delete key-value pair from database. No error is returned if this key-value pair does not exist.
-func (nss *NamespaceSingle[ValueT]) Delete() (err error) {
-	err = nss.txn.badgertxn.Delete([]byte(nss.name))
-	if err != nil {
-		if errors.Is(err, badger.ErrKeyNotFound) {
-			return nil
-		}
-
-		return fmt.Errorf("Delete `%v`: %w", nss.name, err)
-	}
-
-	return nil
-}
 
 // Stores multiple key-value pairs under same namespace
 type NamespaceMultiple[KeyT comparable, ValueT any] struct {
@@ -208,30 +132,49 @@ func (nsm *NamespaceMultiple[KeyT, ValueT]) Iter(viewer func(key KeyT, value Val
 	return nil
 }
 
-func encodeGob(data any) ([]byte, error) {
-	buf := bytes.NewBuffer(nil)
-	err := gob.NewEncoder(buf).Encode(data)
+func (nsm *NamespaceMultiple[KeyT, ValueT]) FindKeyByValue(value ValueT) (key KeyT, ok bool, err error) {
+	targetvalueb, err := encodeGob(value)
 	if err != nil {
-		return nil, fmt.Errorf("encodeGob: %w", err)
+		return key, false, fmt.Errorf("FindKeyByValue `%v`: %w", nsm.name, err)
 	}
 
-	return buf.Bytes(), nil
-}
+	targetvaluebStr := string(targetvalueb)
 
-func decodeGob[DataT any](b []byte) (dataPtr *DataT, err error) {
-	dataPtr = new(DataT)
-	err = gob.NewDecoder(bytes.NewReader(b)).Decode(dataPtr)
-	if err != nil {
-		return dataPtr, fmt.Errorf("decodeGob: %w", err)
+	it := nsm.txn.badgertxn.NewIterator(badger.DefaultIteratorOptions)
+	defer it.Close()
+
+	prefix := []byte(nsm.name)
+	for it.Seek(prefix); it.ValidForPrefix(prefix); it.Next() {
+		item := it.Item()
+
+		k := item.Key()
+
+		var stop bool
+		err := item.Value(func(valueb []byte) error {
+			if string(valueb) != targetvaluebStr {
+				return nil
+			}
+
+			keyb := removePrefixFromKey(prefix, k)
+
+			keyPtr, err := decodeGob[KeyT](keyb)
+			if err != nil {
+				return err
+			}
+
+			key = *keyPtr
+			stop = true
+
+			return nil
+		})
+		if err != nil {
+			return key, false, fmt.Errorf("FindKeyByValue `%v`: %w", nsm.name, err)
+		}
+
+		if stop {
+			break
+		}
 	}
 
-	return dataPtr, nil
-}
-
-func addPrefixToKey(prefix []byte, key []byte) []byte {
-	return bytes.Join([][]byte{prefix, key}, []byte{0x00})
-}
-
-func removePrefixFromKey(prefix []byte, key []byte) []byte {
-	return key[len(prefix)+1:]
+	return key, true, nil
 }
