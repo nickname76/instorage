@@ -16,7 +16,8 @@ type DB[TxnAPIT any] struct {
 	txnAPIBuilder  func(txn Txn) TxnAPIT
 }
 
-// Opens database from dbpath and stores txnAPIBuilder for building TxnAPI in View and Update methods of DB
+// Opens database from dbpath and stores txnAPIBuilder for building TxnAPI in
+// View and Update methods of DB
 func Open[TxnAPIT any](dbpath string, txnAPIBuilder func(txn Txn) TxnAPIT) (*DB[TxnAPIT], error) {
 	if txnAPIBuilder == nil {
 		panic("txnAPIBuilder must not be nil")
@@ -45,8 +46,8 @@ func Open[TxnAPIT any](dbpath string, txnAPIBuilder func(txn Txn) TxnAPIT) (*DB[
 	}, nil
 }
 
-// Starts read-write transaction with your TxnAPI.
-// If error is returned during transaction, all previous operations under this transaction are discarded.
+// Starts read-write transaction with your TxnAPI. If error is returned during
+// transaction, all previous operations under this transaction are discarded.
 func (db *DB[TxnAPIT]) Update(updater func(txnAPI TxnAPIT) error) error {
 	err := db.badgerdb.Update(func(badgertxn *badger.Txn) error {
 		txnAPI := db.txnAPIBuilder(Txn{
@@ -106,7 +107,8 @@ func (db *DB[TxnAPIT]) Backup(w io.Writer) error {
 	return nil
 }
 
-// Replaces database storage with backup. Should be called when not running any other transactions.
+// Replaces database storage with backup. Should be called when not running any
+// other transactions.
 func (db *DB[TxnAPIT]) LoadBackup(r io.Reader) error {
 	err := db.badgerdb.DropAll()
 	if err != nil {
@@ -126,7 +128,8 @@ func (db *DB[TxnAPIT]) LoadBackup(r io.Reader) error {
 	return nil
 }
 
-// Waits all pending transactions and closes database. You must call it to ensure that all pending updates are written to disk.
+// Waits all pending transactions and closes database. You must call it to
+// ensure that all pending updates are written to disk.
 func (db *DB[TxnAPIT]) Close() error {
 	db.stopGCRepeater()
 

@@ -14,9 +14,8 @@ type NamespaceMultiple[KeyT comparable, ValueT any] struct {
 	name string
 }
 
-// Creates api for storing multiple key-value pairs under same namespace.
-// Do not use pointers as types for KeyT and ValueT.
-// Name must not be empty.
+// Creates api for storing multiple key-value pairs under same namespace. Do not
+// use pointers as types for KeyT and ValueT. Name must not be empty.
 func NewNamespaceMultiple[KeyT comparable, ValueT any](txn Txn, name string) *NamespaceMultiple[KeyT, ValueT] {
 	if name == "" {
 		panic("name must not be empty")
@@ -93,7 +92,8 @@ func (nsm *NamespaceMultiple[KeyT, ValueT]) Delete(key KeyT) (err error) {
 	return nil
 }
 
-// Iterates over all key-value pairs in this namespace. If viewer function returns stop == true, then iteration stops.
+// Iterates over all key-value pairs in this namespace. If viewer function
+// returns stop == true, then iteration stops.
 func (nsm *NamespaceMultiple[KeyT, ValueT]) Iter(viewer func(key KeyT, value ValueT) (stop bool, err error)) error {
 	it := nsm.txn.badgertxn.NewIterator(badger.DefaultIteratorOptions)
 	defer it.Close()
